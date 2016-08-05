@@ -1,0 +1,10 @@
+#---------------------------------------
+#--------- PARAMETERS FILE -------------
+#---------------------------------------
+#+++++++++++++++++++++++++++++++++++++++
+#Number of cells per axis is N
+#Total number of cells is N^3
+NGRID 512
+FILE_NAME /home/nico/simBoxes/Box400x512_z_0_partial_gad1
+GADGET_VERSION 1
+SCHEME D20
