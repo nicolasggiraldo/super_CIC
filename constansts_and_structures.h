@@ -83,7 +83,7 @@ struct gadget_head
   double       redshift;
   int          flag_sfr;
   int          flag_feedback;
-  int          npartTotal[6];
+  unsigned int npartTotal[6];
   int          flag_cooling;
   int          num_files;
   double       BoxSize;
@@ -92,7 +92,7 @@ struct gadget_head
   double       HubbleParam;
   int          flag_age;
   int          flag_metals;
-  int          nallHW[6];
+  unsigned int nallHW[6];
   char         fill[256-
 		    6*4-
 		    6*8-
@@ -103,5 +103,4 @@ struct gadget_head
 		    4*8-
 		    2*4-
 		    6*4]; // Fills to 256 Bytes
-  //char   fill[256-6*4-6*8-2*8-2*4-6*4-2*4-4*8]; // Fills to 256 Bytes
 }Gheader;

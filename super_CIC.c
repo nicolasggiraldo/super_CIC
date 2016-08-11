@@ -103,11 +103,19 @@ int main(int argc, char *argv[])
 
   // Reading header
   sprintf(buf,"%s.%d",GV.SNAP_BASE,0);
-  if( read_head(buf, rank)==-1 )
+  switch( read_head(buf, rank) )
     {
+    case -1 :
       printf("\n***********************************");
       printf("***********************************\n");
       printf("Error: Bad path to header.\n" );
+      printf("***********************************");
+      printf("***********************************\n\n");
+      exit(0);
+    case -2 :
+      printf("\n***********************************");
+      printf("***********************************\n");
+      printf("Error: Masses of the HALO particles are individual.\n" );
       printf("***********************************");
       printf("***********************************\n\n");
       exit(0);
@@ -226,6 +234,7 @@ int main(int argc, char *argv[])
 	     rank,s,
 	     header.npart[GAS],header.npart[HALO],header.npart[DISK],
 	     header.npart[BULGE],header.npart[STARS],header.npart[BNDRY]);
+      fflush(stdout);
       
       //  Begining with the groups
       if(GV.GADGET_VERSION==2)
@@ -274,7 +283,17 @@ int main(int argc, char *argv[])
 		      xc = GV.H * (0.5 + i+ii);
 		      yc = GV.H * (0.5 + j+jj);
 		      zc = GV.H * (0.5 + k+kk);
+		      
 		      denCon[index_cell] += header.mass[HALO] * W(xc-pos[X], yc-pos[Y], zc-pos[Z], GV.H);
+
+		      ////////////////////////////////////////////////////////////////////////////////////
+		      /* As particle masses of the HALO are global,
+			 we are going to make just the sum of window 
+			 functions. At the end of the comunication of 
+			 all the processes, we will multiply by the 
+			 HALO particle mass as a common factor */
+		      //denCon[index_cell] += 1000.0*W(xc-pos[X], yc-pos[Y], zc-pos[Z], GV.H);
+		      ////////////////////////////////////////////////////////////////////////////////////
 		    }
 		}
 	    }
@@ -283,9 +302,9 @@ int main(int argc, char *argv[])
     }
     
   MPI_Barrier(comm);
-
-
-
+  
+  
+  
   ///////////////////////////////////////////////
   //* SENDING DENCON OF OTHER TASKS TO RANK 0 *//
   ///////////////////////////////////////////////
@@ -294,6 +313,7 @@ int main(int argc, char *argv[])
 
   if(rank==0)
     {
+      /* Memory allocation of density Contrast variable to receive */
       denCon_recv = (double *) calloc( GV.NGRID3, sizeof(double) );
 
       for(i=1;i<size;i++)//FOR IN RANKS
@@ -313,6 +333,15 @@ int main(int argc, char *argv[])
 	  
 	}
       free(denCon_recv);
+
+      ////////////////////////////////////////////////////////////////////////////////////
+      /* In order to get the proper mass asociated to HALO particles is 
+	 necessary to take the product with the mass of a individal particle  */
+      //for(index_cell=0; index_cell<GV.NGRID3; index_cell++)
+      //{
+      //denCon[index_cell] *= 0.001*Gheader.mass[HALO];
+      //}
+      ////////////////////////////////////////////////////////////////////////////////////
     }
   else
     {
@@ -322,7 +351,7 @@ int main(int argc, char *argv[])
 	    }
     }
   
-  /////////////////////////////////////////////////////////////////////////////////
+  
 
   //////////////////////////////////////////////////////
   //* TERMINATING THE CALCULATION AND SAVING IN FILE *//

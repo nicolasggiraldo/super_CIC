@@ -225,6 +225,8 @@ int read_parameters(char param_file_name[], int rank)
  *  returns: Integer value.
  *            0 --> There is no error. 
  *           -1 --> There is an error loading the header.
+ *           -2 --> HALO masses are individual. As a condition of the 
+ *                  code, HALO masses must be global.   
  */
 int read_head(char *infile, int rank)
 {  
@@ -274,21 +276,36 @@ int read_head(char *infile, int rank)
   
   //if(rank==0){printf("\n");}
 
-  if(rank==0)
-    {
-      for(i=0; i<6; i++)
-	{ 
-	  if((Gheader.npart[i] != 0) && (Gheader.mass[i] != 0.0))
+  for(i=0; i<6; i++)
+    { 
+      if((Gheader.npart[i] != 0) && (Gheader.mass[i] != 0.0))
+	{
+	  if(rank==0)
 	    {
 	      printf(" * The mass of each particle is %d es %g\n",i,Gheader.mass[i]);
 	    }
+	}
       
-	  if((Gheader.npart[i] != 0) && (Gheader.mass[i] == 0.0))
+      if((Gheader.npart[i] != 0) && (Gheader.mass[i] == 0.0))
+	{
+	  if(rank==0)
 	    {
 	      printf(" * There are individual mases for this particle set %d\n",i);
 	    }
-	} 
+	  
+	  if(i==HALO)
+	    {
+	      if(rank==0)
+		{
+		  printf("read_head Error: HALO masses must be global not individual\n");
+		}
+	      return -2;
+	    }
+	}
+    } 
   
+  if(rank==0)
+    {
       printf("\n");
           
       printf(" * Frame's Time... %g\n", Gheader.time); 
