@@ -28,7 +28,7 @@
 int read_parameters(char param_file_name[], int rank)
 {
   FILE *cfg  = NULL; // Stream to the parameter (config) file
-  int   len  = 300;  // Len of the read parameter
+  int   len  = LENCHAR;  // Len of the read parameter
   char *buf  = NULL; // buffer variables used to read strings
   char *buf1 = NULL;
   char *buf2 = NULL; 

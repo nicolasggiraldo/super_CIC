@@ -8,6 +8,11 @@ $(PROGRAM):
 	$(CC) $@.o $(LFLAGS) -o $@.x
 	rm $@.o
 
+VEL:
+	$(CC) -c $(PROGRAM).c -DVEL $(CFLAGS)
+	$(CC) $(PROGRAM).o $(LFLAGS) -o $(PROGRAM).x
+	rm $(PROGRAM).o
+
 clean:
 	rm -rf *.out
 	rm -rf *-

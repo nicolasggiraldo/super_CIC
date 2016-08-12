@@ -14,8 +14,16 @@ int main(int argc, char *argv[])
   int ii, jj, kk; // Aditional counters for the scheme assignation calculation
   unsigned long ul_i;
   int index_start=0, index_end=0; // Index to start and finish according to the scheme used
-  double *denCon;
-  double *denCon_recv;
+  double *denCon=NULL;
+  double *denCon_recv=NULL;
+#ifdef VEL
+  double *vx=NULL;
+  double *vx_recv=NULL;
+  double *vy=NULL;
+  double *vy_recv=NULL;
+  double *vz=NULL;
+  double *vz_recv=NULL;
+#endif
   long int index_cell;
   //long int indexaux;
   unsigned long Npart_snap;
@@ -27,20 +35,28 @@ int main(int argc, char *argv[])
   struct gadget_head header;
   int err;
   int s;
-  char buf[300];
+  char buf[LENCHAR];
   char label[4];
-  float pos[3]; //float vel[3];
+  float pos[3]; 
   double xc, yc, zc;
   unsigned long blksize_pos;
-  //unsigned long blksize_vel;
+#ifdef VEL
+  char buf_vel[LENCHAR];
+  float vel[3];
+  unsigned long blksize_vel;
+#endif
   //unsigned long blksize_ids;
 
   FILE *fp_pos  =NULL;
-  //FILE *fp_vel  =NULL;
+#ifdef VEL
+  FILE *fp_vel  =NULL;
+#endif
   //FILE *fp_ids  =NULL;
   FILE *fp_head = NULL;
   FILE *outfile = NULL;
-
+#ifdef VEL
+  FILE *outfile_vel = NULL;
+#endif
 
   
   // MPI variables
@@ -50,7 +66,7 @@ int main(int argc, char *argv[])
   MPI_Status status;
   int chunk;
   
-  
+
   
   /////////////////////
   //* MPI BEGGINING *//
@@ -181,7 +197,11 @@ int main(int argc, char *argv[])
   /* Array of structure Cell, size NGRID^3 */
   //cells = (struct Cell *) calloc( GV.NGRID3, sizeof( struct Cell) );
   denCon = (double *) calloc( GV.NGRID3, sizeof(double) );
-  
+#ifdef VEL
+  vx = (double *) calloc( GV.NGRID3, sizeof(double) );
+  vy = (double *) calloc( GV.NGRID3, sizeof(double) );
+  vz = (double *) calloc( GV.NGRID3, sizeof(double) );
+#endif
   
   
   //////////////////////////////
@@ -207,7 +227,9 @@ int main(int argc, char *argv[])
 	  exit(0);
 	}
       fp_pos = fopen(buf,"r");
-      //fp_vel = fopen(buf,"r");
+#ifdef VEL
+      fp_vel = fopen(buf,"r");
+#endif
       //fp_ids = fopen(buf,"r");
       
       /* reading the header for this sub snap */
@@ -240,26 +262,37 @@ int main(int argc, char *argv[])
       if(GV.GADGET_VERSION==2)
 	{
 	  blksize_pos =  9*sizeof(int) + 2*4*sizeof(char) + sizeof(header);
-	  //blksize_vel = 14*sizeof(int) + 3*4*sizeof(char) + sizeof(header) +   3*Npart_snap*sizeof(float);
+#ifdef VEL
+	  blksize_vel = 14*sizeof(int) + 3*4*sizeof(char) + sizeof(header) +   3*Npart_snap*sizeof(float);
+#endif
 	  //blksize_ids = 19*sizeof(int) + 4*4*sizeof(char) + sizeof(header) + 2*3*Npart_snap*sizeof(float);
 	}
-      else
+	else
 	{
 	  blksize_pos = 3*sizeof(int) + sizeof(header);
-	  //blksize_vel = 5*sizeof(int) + sizeof(header) +   3*Npart_snap*sizeof(float);
+#ifdef VEL
+	  blksize_vel = 5*sizeof(int) + sizeof(header) +   3*Npart_snap*sizeof(float);
+#endif
 	  //blksize_ids = 7*sizeof(int) + sizeof(header) + 2*3*Npart_snap*sizeof(float);
 	}
       /* In case there is GAS jump that extra space :P */
       blksize_pos += header.npart[GAS]*3*sizeof(float);
+#ifdef VEL
+      blksize_vel += 2*header.npart[GAS]*3*sizeof(float);
+#endif
       
       fseek(fp_pos, blksize_pos, SEEK_SET);
-      //fseek(fp_vel, blksize_vel, SEEK_SET);
+#ifdef VEL
+      fseek(fp_vel, blksize_vel, SEEK_SET);
+#endif
       //fseek(fp_ids, blksize_ids, SEEK_SET);
-
+      
       for(ul_i=0; ul_i<Npart_snap ;ul_i++)
 	{
 	  err=fread(&pos[0], sizeof(float),  3, fp_pos);
-	  //err=fread(&vel[0], sizeof(float),  3, fp_vel);
+#ifdef VEL
+	  err=fread(&vel[0], sizeof(float),  3, fp_vel);
+#endif
 	  //err=fread(&id,     sizeof(idtype), 1, fp_ids);
 	  
 	  // index in the x, y and z-axis
@@ -285,7 +318,12 @@ int main(int argc, char *argv[])
 		      zc = GV.H * (0.5 + k+kk);
 		      
 		      denCon[index_cell] += header.mass[HALO] * W(xc-pos[X], yc-pos[Y], zc-pos[Z], GV.H);
-
+#ifdef VEL
+		      vx[index_cell] += vel[X] * W(xc-pos[X], yc-pos[Y], zc-pos[Z], GV.H);
+		      vy[index_cell] += vel[Y] * W(xc-pos[X], yc-pos[Y], zc-pos[Z], GV.H);
+		      vz[index_cell] += vel[Z] * W(xc-pos[X], yc-pos[Y], zc-pos[Z], GV.H);
+#endif
+		      
 		      ////////////////////////////////////////////////////////////////////////////////////
 		      /* As particle masses of the HALO are global,
 			 we are going to make just the sum of window 
@@ -299,8 +337,11 @@ int main(int argc, char *argv[])
 	    }
 	}
       fclose(fp_pos);
+#ifdef VEL
+      fclose(fp_vel);
+#endif
     }
-    
+  
   MPI_Barrier(comm);
   
   
@@ -315,17 +356,32 @@ int main(int argc, char *argv[])
     {
       /* Memory allocation of density Contrast variable to receive */
       denCon_recv = (double *) calloc( GV.NGRID3, sizeof(double) );
-
+#ifdef VEL
+      vx_recv = (double *) calloc( GV.NGRID3, sizeof(double) );
+      vy_recv = (double *) calloc( GV.NGRID3, sizeof(double) );
+      vz_recv = (double *) calloc( GV.NGRID3, sizeof(double) );
+#endif
+      
       for(i=1;i<size;i++)//FOR IN RANKS
 	{
 	  for(j=0; j<SIZEDOUBLE; j++)//FOR IN CHUNKS
 	    {
 	      MPI_Recv(denCon_recv+(j*chunk), chunk, MPI_DOUBLE, i, j, comm, &status);
+#ifdef VEL
+	      MPI_Recv(vx_recv+(j*chunk),     chunk, MPI_DOUBLE, i, j+size,   comm, &status);
+	      MPI_Recv(vy_recv+(j*chunk),     chunk, MPI_DOUBLE, i, j+2*size, comm, &status);
+	      MPI_Recv(vz_recv+(j*chunk),     chunk, MPI_DOUBLE, i, j+3*size, comm, &status);
+#endif
 	    }
 	  
 	  for(index_cell=0; index_cell<GV.NGRID3; index_cell++)
 	    {
 	      denCon[index_cell] += denCon_recv[index_cell];
+#ifdef VEL
+	      vx[index_cell] += vx_recv[index_cell];
+	      vy[index_cell] += vy_recv[index_cell];
+	      vz[index_cell] += vz_recv[index_cell];
+#endif
 	    }
 	  
 	  printf("Recived density constrast from rank:%d to rank:%d\n",i,rank);
@@ -333,6 +389,11 @@ int main(int argc, char *argv[])
 	  
 	}
       free(denCon_recv);
+#ifdef VEL
+      free(vx_recv);
+      free(vy_recv);
+      free(vz_recv);
+#endif
 
       ////////////////////////////////////////////////////////////////////////////////////
       /* In order to get the proper mass asociated to HALO particles is 
@@ -348,6 +409,11 @@ int main(int argc, char *argv[])
       for(j=0; j<SIZEDOUBLE; j++)//FOR IN CHUNKS
 	    {
 	      MPI_Send(denCon+(j*chunk), chunk, MPI_DOUBLE, 0, j, comm);
+#ifdef VEL    
+	      MPI_Send(vx+(j*chunk),     chunk, MPI_DOUBLE, 0, j+size,   comm);
+	      MPI_Send(vy+(j*chunk),     chunk, MPI_DOUBLE, 0, j+2*size, comm);
+	      MPI_Send(vz+(j*chunk),     chunk, MPI_DOUBLE, 0, j+3*size, comm);
+#endif
 	    }
     }
   
@@ -369,27 +435,45 @@ int main(int argc, char *argv[])
 	{
 	  // NGP
 	  sprintf(buf, "%s/%s_NGRID_%d_NGP.dens", GV.OUTPUT_DIR, last, GV.NGRID);
+#ifdef VEL    
+	  sprintf(buf_vel, "%s/%s_NGRID_%d_NGP.vel", GV.OUTPUT_DIR, last, GV.NGRID);
+#endif
 	}
       else if( strcmp(GV.SCHEME, "CIC") == 0 )
 	{
 	  // CIC
-	  sprintf (buf, "%s/%s_NGRID_%d_CIC.dens", GV.OUTPUT_DIR, last, GV.NGRID);
+	  sprintf(buf, "%s/%s_NGRID_%d_CIC.dens", GV.OUTPUT_DIR, last, GV.NGRID);
+#ifdef VEL 
+	  sprintf(buf_vel, "%s/%s_NGRID_%d_CIC.vel", GV.OUTPUT_DIR, last, GV.NGRID);
+#endif
 	}
       else if( strcmp(GV.SCHEME, "TSC") == 0 )
 	{
 	  // TSC
-	  sprintf (buf, "%s/%s_NGRID_%d_TSC.dens", GV.OUTPUT_DIR, last, GV.NGRID);
+	  sprintf(buf, "%s/%s_NGRID_%d_TSC.dens", GV.OUTPUT_DIR, last, GV.NGRID);
+#ifdef VEL 
+	  sprintf(buf_vel, "%s/%s_NGRID_%d_TSC.vel", GV.OUTPUT_DIR, last, GV.NGRID);
+#endif
 	}
       else if( strcmp(GV.SCHEME, "D20") == 0 )
 	{
 	  // D20
-	  sprintf (buf, "%s/%s_NGRID_%d_D20.dens", GV.OUTPUT_DIR, last, GV.NGRID);
+	  sprintf(buf, "%s/%s_NGRID_%d_D20.dens", GV.OUTPUT_DIR, last, GV.NGRID);
+#ifdef VEL 
+	  sprintf(buf_vel, "%s/%s_NGRID_%d_D20.vel", GV.OUTPUT_DIR, last, GV.NGRID);
+#endif
 	}
   
       // Opening file for output of the cell
       outfile = fopen(buf, "wb");
+#ifdef VEL 
+      outfile_vel = fopen(buf_vel, "wb");
+#endif
 
       printf("Saving data in %s\n", buf);
+#ifdef VEL 
+      printf("               %s\n", buf_vel);
+#endif
       printf("-----------------------------------------------\n");
       fflush(stdout);
       
@@ -437,10 +521,20 @@ int main(int argc, char *argv[])
 		  
 		  // Writing density contrast
 		  fwrite( &(denCon[index_cell]), sizeof(double), 1, outfile );
+
+#ifdef VEL 
+		  // Writing velocities
+		  fwrite( &(vx[index_cell]), sizeof(double), 1, outfile_vel );
+		  fwrite( &(vy[index_cell]), sizeof(double), 1, outfile_vel );
+		  fwrite( &(vz[index_cell]), sizeof(double), 1, outfile_vel );
+#endif
 		}
 	    }
 	}
       fclose(outfile);
+#ifdef VEL 
+      fclose(outfile_vel);
+#endif
       
       /* Validation of the scheme */
       if( strcmp(GV.SCHEME, "NGP") == 0 )
@@ -469,8 +563,8 @@ int main(int argc, char *argv[])
 	     (100.0 * (totalMass-GV.TOTAL_MASS)) / GV.TOTAL_MASS);
     }
   
-
   
+
   ///////////////////
   //* FREE MEMORY *//
   ///////////////////
@@ -483,6 +577,11 @@ int main(int argc, char *argv[])
       free(y_D20);
     }
   free(denCon);
+#ifdef VEL 
+  free(vx);
+  free(vy);
+  free(vz);
+#endif
 
   if(err){}
 

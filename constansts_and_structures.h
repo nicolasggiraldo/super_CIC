@@ -18,6 +18,8 @@
 #define STARS 4
 #define BNDRY 5
 
+#define LENCHAR 300
+
 #define SIZEDOUBLE sizeof(double)
 
 #define POW2(x) ((x)*(x))
