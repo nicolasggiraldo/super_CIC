@@ -118,7 +118,10 @@ int main(int argc, char *argv[])
     }
 
   // Reading header
-  sprintf(buf,"%s.%d",GV.SNAP_BASE,0);
+  if(GV.NSNAPS==1)
+    sprintf(buf,"%s",GV.SNAP_BASE);
+  else
+    sprintf(buf,"%s.%d",GV.SNAP_BASE,0);
   switch( read_head(buf, rank) )
     {
     case -1 :
@@ -218,7 +221,10 @@ int main(int argc, char *argv[])
   //npart[6]
   for(s=rank; s<GV.NSNAPS; s+=size)
     {
-      sprintf(buf,"%s.%d",GV.SNAP_BASE,s);
+      if(GV.NSNAPS==1)
+	sprintf(buf,"%s",GV.SNAP_BASE);
+      else
+	sprintf(buf,"%s.%d",GV.SNAP_BASE,s);
 
       // Reading the positions, velocities and ID's of the snapshot
       if( (fp_head=fopen(buf,"r"))==NULL )
@@ -352,7 +358,7 @@ int main(int argc, char *argv[])
   
   chunk = (GV.NGRID3)/SIZEDOUBLE;
 
-  if(rank==0)
+  if(rank==0 && GV.NSNAPS>1)
     {
       /* Memory allocation of density Contrast variable to receive */
       denCon_recv = (double *) calloc( GV.NGRID3, sizeof(double) );
@@ -404,7 +410,7 @@ int main(int argc, char *argv[])
       //}
       ////////////////////////////////////////////////////////////////////////////////////
     }
-  else
+  else if(GV.NSNAPS>1)
     {
       for(j=0; j<SIZEDOUBLE; j++)//FOR IN CHUNKS
 	    {
