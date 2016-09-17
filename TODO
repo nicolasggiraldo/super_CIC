@@ -1,0 +1,4 @@
+Mejorar la forma para calcular D20. Para esto se hace una interpolacion con (gsl) splines
+para un conjunto de 610 puntos, los resultados de la interpolacion son buenos (con
+variaciones que a lo sumo van hasta 0.06 del valor real), pero podrian mejorar si se
+incluyen mas puntos o si se implementa un metodo de calculo directo que sea rapido.
