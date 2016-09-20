@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
   else if( strcmp(GV.SCHEME, "D20") == 0 )
     {
       // D20
-      len_array_D20 = 610;
+      len_array_D20 = 10818;
       x_D20 = (double *) calloc( len_array_D20, sizeof(double));
       y_D20 = (double *) calloc( len_array_D20, sizeof(double));
       
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 	err=fscanf(fin_D20, "%lf %lf", &x_D20[i], &y_D20[i]);
       
       fclose(fin_D20);
-      
+
       // GSL interpolation allocation
       acc    = gsl_interp_accel_alloc(); // accelerator
       spline = gsl_spline_alloc(gsl_interp_cspline, len_array_D20); // spline
